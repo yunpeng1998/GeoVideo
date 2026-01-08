@@ -1,30 +1,11 @@
-"""
-This script demonstrates how to generate a video using the CogVideoX model with the Hugging Face `diffusers` pipeline.
-The script supports different types of video generation, including text-to-video (t2v), image-to-video (i2v),
-and video-to-video (v2v), depending on the input data and different weight.
-
-- text-to-video: THUDM/CogVideoX-5b, THUDM/CogVideoX-2b or THUDM/CogVideoX1.5-5b
-- video-to-video: THUDM/CogVideoX-5b, THUDM/CogVideoX-2b or THUDM/CogVideoX1.5-5b
-- image-to-video: THUDM/CogVideoX-5b-I2V or THUDM/CogVideoX1.5-5b-I2V
-
-Running the Script:
-To run the script, use the following command with appropriate arguments:
-
-```bash
-$ python cli_demo.py --prompt "A girl riding a bike." --model_path THUDM/CogVideoX1.5-5b --generate_type "t2v"
-```
-
-You can change `pipe.enable_sequential_cpu_offload()` to `pipe.enable_model_cpu_offload()` to speed up inference, but this will use more GPU memory
-
-Additional options are available to specify the model path, guidance scale, number of inference steps, video generation type, and output paths.
-
-"""
-
 import argparse
 import logging
 from typing import Literal, Optional
-
+import cv2
+from PIL import Image
+from tqdm import tqdm
 import torch
+import numpy as np
 
 from diffusers import (
     CogVideoXDPMScheduler,
@@ -34,7 +15,7 @@ from diffusers import (
 )
 
 from diffusers import AutoencoderKLCogVideoX, CogVideoXPipeline, CogVideoXDPMScheduler
-from diffusers.utils import export_to_video
+
 from transformers import T5EncoderModel
 import os
 import sys
@@ -47,9 +28,11 @@ from src.models.transformers import CogVideoXTransformer3DModel, CogVideoXTransf
 from src.pipelines.cogvideo import  CogVideoXDepthPipeline
 
 from diffusers.utils import export_to_video, load_image, load_video
-
-
 logging.basicConfig(level=logging.INFO)
+from typing import Optional, Callable, Union
+
+from utils.dc_utils import read_video_frames, save_video
+
 
 # Recommended resolution for each model (width, height)
 RESOLUTION_MAP = {
@@ -61,128 +44,6 @@ RESOLUTION_MAP = {
     "cogvideox-5b": (480, 720),
     "cogvideox-2b": (480, 720),
 }
-
-
-
-import cv2
-import PIL.Image
-import PIL.ImageOps
-from typing import Optional, Callable, Union
-
-def load_image_from_video(
-    video_path: Union[str], convert_method: Optional[Callable[[PIL.Image.Image], PIL.Image.Image]] = None
-) -> PIL.Image.Image:
-    """
-    Loads the first frame from a video file and returns it as a PIL Image.
-
-    Args:
-        video_path (`str`): Path to a local video file.
-        convert_method (Callable[[PIL.Image.Image], PIL.Image.Image], *optional*): 
-            A conversion method to apply to the image after loading it. 
-            When set to `None`, the image will be converted to "RGB".
-
-    Returns:
-        `PIL.Image.Image`: The first video frame as a PIL Image.
-
-    Raises:
-        ValueError: If the video cannot be opened or the path is invalid.
-    """
-    if not isinstance(video_path, str) or not os.path.isfile(video_path):
-        raise ValueError(f"Invalid video path: {video_path}")
-
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video file: {video_path}")
-
-    ret, frame = cap.read()
-    cap.release()
-
-    if not ret:
-        raise ValueError("Failed to read the first frame from the video.")
-
-    # Convert OpenCV frame (BGR) to PIL image (RGB)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    image = PIL.Image.fromarray(frame_rgb)
-    image = PIL.ImageOps.exif_transpose(image)
-
-    if convert_method is not None:
-        image = convert_method(image)
-    else:
-        image = image.convert("RGB")
-
-    return image
-
-def smart_load_image(
-    path: Union[str, PIL.Image.Image],
-    convert_method: Optional[Callable[[PIL.Image.Image], PIL.Image.Image]] = None
-) -> PIL.Image.Image:
-    """
-    Loads an image from a file path. If the file is a video (.mp4), it loads the first frame as a PIL image.
-    Otherwise, it uses the regular load_image function.
-
-    Args:
-        path (`str` or `PIL.Image.Image`): Path to the image or video file, or a PIL Image.
-        convert_method (Callable, optional): A method to apply to the image after loading.
-
-    Returns:
-        PIL.Image.Image: The loaded image.
-    """
-    if isinstance(path, str) and path.lower().endswith(".mp4"):
-        return load_image_from_video(path, convert_method)
-    else:
-        return load_image(path, convert_method)
-
-
-
-import os 
-import cv2
-import numpy as np
-
-from safetensors.torch import load_file
-
-
-import argparse
-import torch
-import imageio
-from diffusers import AutoencoderKLCogVideoX
-from torchvision import transforms
-import numpy as np
-from utils.dc_utils import read_video_frames, save_video
-
-def save_depth_video(batch_output, depth_filename, fps=30):
-
-
-
-    first_frame = batch_output[0]
-
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-    video_writer = cv2.VideoWriter(depth_filename, fourcc, fps, (1360, 768), isColor=False)
-
-
-    for frame in batch_output:
-
-        depth_array = np.array(frame)
-
-
-        depth_normalized = cv2.normalize(depth_array, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-
-
-        video_writer.write(depth_normalized)
-
-
-    video_writer.release()
-    print(f"Depth video saved to {depth_filename}")
-
-
-
-import cv2
-import numpy as np
-from PIL import Image
-from tqdm import tqdm
-
-
-import os
 
 
 
