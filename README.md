@@ -28,7 +28,7 @@ Download all checkpoints except the transformer from [here](https://huggingface.
 
 
 
-### GeoVideo Transformer Checkpoint
+### GeoVideo Transformer Checkpoint (Only support static scene prompt input)
 
 Download our [transformer](https://huggingface.co/yunpeng1998/geovideo) checkpoint and place it under:
 
