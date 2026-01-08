@@ -351,17 +351,6 @@ def generate_video(
                     generator=torch.Generator().manual_seed(seed),  # Set the seed for reproducibility
                 )
             video_generate = pipe_return.frames[0]
-            # 假设 video_frames 是传给 export_to_video 的那个
-            first = video_generate[0]
-            import numpy as np
-            from PIL import Image
-
-            if isinstance(first, np.ndarray):
-                print("frame[0] ndarray:", first.shape, first.dtype, first.min(), first.max())
-                Image.fromarray((first * 255).clip(0,255).astype("uint8")).save("debug_frame0.png")
-            elif isinstance(first, Image.Image):
-                print("frame[0] PIL:", first.size, first.mode)
-                first.save("debug_frame0.png")
 
             depth_generate = pipe_return.depth_frames[0]
             
