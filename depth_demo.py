@@ -297,59 +297,29 @@ def generate_video(
     with open(prompts_path, "r") as f:
         for idx, line in enumerate(f):
             line = line.strip()
-            if generate_type == "i2v":
-                prompt, image_or_video_path = line.split('\t')
-            else:
-                prompt = line
+
+            prompt = line
             print(f"[{idx}] Prompt: {prompt}")
             filename = f"{idx + 1:05d}.mp4"
             video_path = os.path.join(output_path, filename)
 
             # 4. Generate the video frames based on the prompt.
             # `num_frames` is the Number of frames to generate.
-            if generate_type == "i2v":
-                image = smart_load_image(image_or_video_path)
-                pipe_return = pipe(
-                    height=height,
-                    width=width,
-                    prompt=prompt,
-                    image=image,
-                    # The path of the image, the resolution of video will be the same as the image for CogVideoX1.5-5B-I2V, otherwise it will be 720 * 480
-                    num_videos_per_prompt=num_videos_per_prompt,  # Number of videos to generate per prompt
-                    num_inference_steps=num_inference_steps,  # Number of inference steps
-                    num_frames=num_frames,  # Number of frames to generate
-                    use_dynamic_cfg=True,  # This id used for DPM scheduler, for DDIM scheduler, it should be False
-                    guidance_scale=guidance_scale,
-                    generator=torch.Generator().manual_seed(seed),  # Set the seed for reproducibility
-                    process_image = True
-                )
-            elif generate_type == "t2v":
 
-                pipe_return = pipe(
-                    height=height,
-                    width=width,
-                    prompt=prompt,
-                    num_videos_per_prompt=num_videos_per_prompt,
-                    num_inference_steps=num_inference_steps,
-                    # num_inference_steps=1,
-                    num_frames=num_frames,
-                    use_dynamic_cfg=True,
-                    guidance_scale=guidance_scale,
-                    generator=torch.Generator().manual_seed(seed),
-                )
-            else:
-                pipe_return = pipe(
-                    height=height,
-                    width=width,
-                    prompt=prompt,
-                    video=video,  # The path of the video to be used as the background of the video
-                    num_videos_per_prompt=num_videos_per_prompt,
-                    num_inference_steps=num_inference_steps,
-                    num_frames=num_frames,
-                    use_dynamic_cfg=True,
-                    guidance_scale=guidance_scale,
-                    generator=torch.Generator().manual_seed(seed),  # Set the seed for reproducibility
-                )
+
+            pipe_return = pipe(
+                height=height,
+                width=width,
+                prompt=prompt,
+                num_videos_per_prompt=num_videos_per_prompt,
+                num_inference_steps=num_inference_steps,
+                # num_inference_steps=1,
+                num_frames=num_frames,
+                use_dynamic_cfg=True,
+                guidance_scale=guidance_scale,
+                generator=torch.Generator().manual_seed(seed),
+            )
+
             video_generate = pipe_return.frames[0]
 
             depth_generate = pipe_return.depth_frames[0]
